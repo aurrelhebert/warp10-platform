@@ -252,23 +252,26 @@ public class FETCH extends NamedWarpScriptFunction implements WarpScriptStackFun
         }
         
         if (m.getLabels().containsKey(Constants.OWNER_LABEL) && '=' == m.getLabels().get(Constants.OWNER_LABEL).charAt(0)) {
-          m.getLabels().put(Constants.OWNER_LABEL, m.getLabels().get(Constants.OWNER_LABEL).substring(1));
+          String owner = m.getLabels().get(Constants.OWNER_LABEL).substring(1);
+          if (!m.getLabels().containsKey(Constants.PRODUCER_LABEL)) {
+            m.getLabels().put(Constants.PRODUCER_LABEL, owner);
+          }
+          m.getLabels().put(Constants.OWNER_LABEL, owner);
         } else {
           throw new WarpScriptException(getName() + " provided token is incompatible with '" + PARAM_GTS + "' parameter, expecting a single owner.");
         }
-        
         if (m.getLabels().containsKey(Constants.APPLICATION_LABEL) && '=' == m.getLabels().get(Constants.APPLICATION_LABEL).charAt(0)) {
           m.getLabels().put(Constants.APPLICATION_LABEL, m.getLabels().get(Constants.APPLICATION_LABEL).substring(1));
         } else {
           throw new WarpScriptException(getName() + " provided token is incompatible with '" + PARAM_GTS + "' parameter, expecting a single application.");
         }
-        
         // Recompute IDs
         m.setClassId(GTSHelper.classId(this.SIPHASH_CLASS, m.getName()));
         m.setLabelsId(GTSHelper.labelsId(this.SIPHASH_LABELS, m.getLabels()));
       }
-      
-      iter = ((List<Metadata>) params.get(PARAM_GTS)).iterator();
+      metadatas = metas;
+      iter = metas.iterator();
+
     } else {
       if (params.containsKey(PARAM_SELECTOR_PAIRS)) {
         for (Pair<Object,Object> pair: (List<Pair<Object,Object>>) params.get(PARAM_SELECTOR_PAIRS)) {
@@ -341,7 +344,6 @@ public class FETCH extends NamedWarpScriptFunction implements WarpScriptStackFun
       while(iter.hasNext()) {
         
         metadatas.add(iter.next());
-              
         if (gtscount.incrementAndGet() > gtsLimit) {
           throw new WarpScriptException(getName() + " exceeded limit of " + gtsLimit + " Geo Time Series, current count is " + gtscount);
         }
@@ -408,7 +410,7 @@ public class FETCH extends NamedWarpScriptFunction implements WarpScriptStackFun
         long end = (long) params.get(PARAM_END);
         
         int boundary = 0;
-        
+
         try (GTSDecoderIterator gtsiter = gtsStore.fetch(rtoken, metadatas, end, then, count, skip, sample, writeTimestamp, preBoundary, postBoundary)) {
           while(gtsiter.hasNext()) {           
             GTSDecoder decoder = gtsiter.next();
